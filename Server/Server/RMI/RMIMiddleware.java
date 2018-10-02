@@ -7,12 +7,19 @@ import java.util.*;
 import java.rmi.RemoteException;
 import java.io.*;
 
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+
+
 public class RMIMiddleware implements IResourceManager{
 
 
     private static ResourceManager carRm;
     private static ResourceManager flightRm;
     private static ResourceManager roomRm;
+    private static ResourceManager customerRm;
 
 	private static String s_serverName = "Middleware";
 	private static String s_rmiPrefix = "group17_";
@@ -21,19 +28,20 @@ public class RMIMiddleware implements IResourceManager{
 	public static void main(String args[])
 	{
 
-        //follow poertrs from given rmi 
+        //follow ports from given rmi 
         int mainPort = 1099;
         int carPort = 1100;
         int hotelPort = 1101;
         int flightPort = 1102;
+        int customerPort = 1103;
 
         //must have 4 args to bind to each server 
         if (args.length == 4) {
 
-            String carServer = args[1];
-            String hotelServer = args[2];
-            String flightServer = args[3];
-
+            String carServer = args[0];
+            String hotelServer = args[1];
+            String flightServer = args[2];
+            String customerServer = args[3];
 		
             // Create the RMI server entry following given rmi 
             try {
@@ -47,9 +55,9 @@ public class RMIMiddleware implements IResourceManager{
                 Registry l_registry;
                 
                 try {
-                    l_registry = LocateRegistry.createRegistry(1099);
+                    l_registry = LocateRegistry.createRegistry(mainPort);
                 } catch (RemoteException e) {
-                    l_registry = LocateRegistry.getRegistry(1099);
+                    l_registry = LocateRegistry.getRegistry(mainPort);
                 }
                 final Registry registry = l_registry;
                 registry.rebind(s_rmiPrefix + s_serverName, resourceManager);
@@ -71,7 +79,7 @@ public class RMIMiddleware implements IResourceManager{
                 //bind middleware to correct ressource managers
 
                 Registry flightReg = LocateRegistry.getRegistry(flightServer, flightPort);
-                flightRm = (ResourceManager) flightregistry.lookup(s_rmiPrefix + s_serverName);
+                flightRm = (ResourceManager) flightReg.lookup(s_rmiPrefix + s_serverName);
                 if (flightRm != null) {
                     System.out.println("Middleware connected to flight manager");
                 } else {
@@ -79,7 +87,7 @@ public class RMIMiddleware implements IResourceManager{
                 }
                 
                 Registry carReg = LocateRegistry.getRegistry(carServer, carPort);
-                carRm = (ResourceManager) carregistry.lookup(s_rmiPrefix + s_serverName);
+                carRm = (ResourceManager) carReg.lookup(s_rmiPrefix + s_serverName);
                 if (carRm != null) {
                     System.out.println("Middleware connected to car manager");
                 } else {
@@ -87,13 +95,21 @@ public class RMIMiddleware implements IResourceManager{
                 }
     
                 Registry roomReg = LocateRegistry.getRegistry(hotelServer, hotelPort);
-                roomRm = (ResourceManager) hotelregistry.lookup(s_rmiPrefix + s_serverName);
+                roomRm = (ResourceManager) roomReg.lookup(s_rmiPrefix + s_serverName);
                 if (roomRm != null) {
                     System.out.println("Middleware connected to room manager");
                 } else {
                     System.out.println("Err: Middleware failed to connect to room manager");
                 }
-    
+                
+                    
+                Registry customerReg = LocateRegistry.getRegistry(customerServer, customerPort);
+                customerRm = (ResourceManager) customerReg.lookup(s_rmiPrefix + s_serverName);
+                if (roomRm != null) {
+                    System.out.println("Middleware connected to customer manager");
+                } else {
+                    System.out.println("Err: Middleware failed to connect to customer manager");
+                }
 
             }
             catch (Exception e) {
@@ -133,7 +149,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean addRooms(int id, String location, int numRooms, int price) 
 	throws RemoteException{
-        return roomRm.addRooms(id, location, count, price);
+        return roomRm.addRooms(id, location, numRooms, price);
     }
 			    
     /**
@@ -153,7 +169,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean newCustomer(int id, int cid)
         throws RemoteException{
-            return customerRm.newCustomer(id, customerID);
+            return customerRm.newCustomer(id, cid);
         }
 
     /**
@@ -220,7 +236,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryCars(int id, String location) 
 	throws RemoteException{
-        return carsRm.queryCars(id,location);
+        return carRm.queryCars(id,location);
     }
 
     /**
@@ -250,7 +266,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryFlightPrice(int id, int flightNumber) 
 	throws RemoteException{
-        return flightRm.queryFlightPrice(id, flightNum);
+        return flightRm.queryFlightPrice(id, flightNumber);
     }
 
     /**
@@ -260,7 +276,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryCarsPrice(int id, String location) 
 	throws RemoteException{
-        return carsRm.queryCarsPrice(id, location);
+        return carRm.queryCarsPrice(id, location);
     }
 
     /**
@@ -280,7 +296,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean reserveFlight(int id, int customerID, int flightNumber) 
 	throws RemoteException{
-        return flightRm.reserveFlight(id, customerID, flightNum);
+        return flightRm.reserveFlight(id, customerID, flightNumber);
     }
 
     /**

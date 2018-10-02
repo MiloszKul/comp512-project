@@ -1,3 +1,3 @@
-grant codebase "file:/Users/milosz/desktop/512/Server/" {
+grant codebase "file:/Users/milosz/desktop/comp512-project/server/" {
 permission java.security.AllPermission;
 };
