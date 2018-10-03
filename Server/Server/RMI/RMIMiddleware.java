@@ -16,24 +16,37 @@ import java.rmi.server.UnicastRemoteObject;
 public class RMIMiddleware implements IResourceManager{
 
 
-    private static ResourceManager carRm;
-    private static ResourceManager flightRm;
-    private static ResourceManager roomRm;
-    private static ResourceManager customerRm;
+    private static IResourceManager carRm;
+    private static IResourceManager flightRm;
+    private static IResourceManager roomRm;
+    private static IResourceManager customerRm;
 
+    
 	private static String s_serverName = "Middleware";
-	private static String s_rmiPrefix = "group17_";
+    private static String s_rmiPrefix = "group17_";
+    //all rms run on same port
+    private static int port= 1099;
 
-
+    /*
+        Method for connecting resource managers
+    */
+    private static boolean connectRm(IResourceManager rm,String rmName,String server){
+        try{
+            Registry reg = LocateRegistry.getRegistry(server, port);
+            rm = (IResourceManager) reg.lookup(s_rmiPrefix + rmName);
+            System.out.println("Middleware connected to " + rmName + " Resource Manager");
+            return true;
+        } catch (Exception e) {
+            System.out.println("Err: Middleware failed to connect to " + rmName + " Manager");
+            System.err.println((char)27 + "[31;1mServer exception: " + (char)27 + "[0mUncaught exception");
+            e.printStackTrace();
+            System.exit(1);
+        }
+        return false;
+    }
 	public static void main(String args[])
 	{
 
-        //follow ports from given rmi 
-        int mainPort = 1099;
-        int carPort = 1100;
-        int hotelPort = 1101;
-        int flightPort = 1102;
-        int customerPort = 1103;
 
         //must have 4 args to bind to each server 
         if (args.length == 4) {
@@ -55,9 +68,9 @@ public class RMIMiddleware implements IResourceManager{
                 Registry l_registry;
                 
                 try {
-                    l_registry = LocateRegistry.createRegistry(mainPort);
+                    l_registry = LocateRegistry.createRegistry(port);
                 } catch (RemoteException e) {
-                    l_registry = LocateRegistry.getRegistry(mainPort);
+                    l_registry = LocateRegistry.getRegistry(port);
                 }
                 final Registry registry = l_registry;
                 registry.rebind(s_rmiPrefix + s_serverName, resourceManager);
@@ -74,42 +87,13 @@ public class RMIMiddleware implements IResourceManager{
                         }
                     }
                 });                                       
-                System.out.println("'" + s_serverName + "' middleware server ready and bound to '" + s_rmiPrefix + s_serverName + "'");
+                System.out.println("Middleware server '" + s_rmiPrefix + s_serverName + "'");
 
                 //bind middleware to correct ressource managers
-
-                Registry flightReg = LocateRegistry.getRegistry(flightServer, flightPort);
-                flightRm = (ResourceManager) flightReg.lookup(s_rmiPrefix + s_serverName);
-                if (flightRm != null) {
-                    System.out.println("Middleware connected to flight manager");
-                } else {
-                    System.out.println("Err: Middleware failed to connect to flight manager");
-                }
-                
-                Registry carReg = LocateRegistry.getRegistry(carServer, carPort);
-                carRm = (ResourceManager) carReg.lookup(s_rmiPrefix + s_serverName);
-                if (carRm != null) {
-                    System.out.println("Middleware connected to car manager");
-                } else {
-                    System.out.println("Err: Middleware failed to connect to car manager");
-                }
-    
-                Registry roomReg = LocateRegistry.getRegistry(hotelServer, hotelPort);
-                roomRm = (ResourceManager) roomReg.lookup(s_rmiPrefix + s_serverName);
-                if (roomRm != null) {
-                    System.out.println("Middleware connected to room manager");
-                } else {
-                    System.out.println("Err: Middleware failed to connect to room manager");
-                }
-                
-                    
-                Registry customerReg = LocateRegistry.getRegistry(customerServer, customerPort);
-                customerRm = (ResourceManager) customerReg.lookup(s_rmiPrefix + s_serverName);
-                if (roomRm != null) {
-                    System.out.println("Middleware connected to customer manager");
-                } else {
-                    System.out.println("Err: Middleware failed to connect to customer manager");
-                }
+                connectRm(flightRm,"Flights",flightServer);
+                connectRm(carRm,"Cars",carServer);
+                connectRm(roomRm,"Hotels",hotelServer);
+                connectRm(customerRm,"Customers",customerServer);
 
             }
             catch (Exception e) {
@@ -159,7 +143,11 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int newCustomer(int id) 
 	throws RemoteException{
-        return customerRm.newCustomer(id);
+        int nid = customerRm.newCustomer(id);
+        carRm.newCustomer(id, nid );
+        flightRm.newCustomer(id, nid );
+        roomRm.newCustomer(id, nid );
+        return nid;
     }
     
     /**
@@ -169,7 +157,10 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean newCustomer(int id, int cid)
         throws RemoteException{
-            return customerRm.newCustomer(id, cid);
+            return  carRm.newCustomer(id, cid) && 
+            flightRm.newCustomer(id, cid) &&
+            roomRm.newCustomer(id, cid) &&
+            customerRm.newCustomer(id, cid);
         }
 
     /**
@@ -216,7 +207,10 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean deleteCustomer(int id, int customerID) 
 	throws RemoteException{
-        return customerRm.deleteCustomer(id, customerID);
+        return  carRm.deleteCustomer(id, customerID) && 
+        flightRm.deleteCustomer(id, customerID) && 
+        roomRm.deleteCustomer(id, customerID) && 
+        customerRm.deleteCustomer(id, customerID);
     }
 
     /**
@@ -326,8 +320,14 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean bundle(int id, int customerID, Vector<String> flightNumbers, String location, boolean car, boolean room)
 	throws RemoteException{
-        // what is this ???????
-        return true;
+
+        boolean rF = true;
+
+        for(int i =0; i <flightNumbers.size();i++){
+            int flightNum = Integer.parseInt(flightNumbers.get(i));
+            rF = rF && flightRm.reserveFlight(id, customerID, flightNum);
+        }
+        return carRm.reserveCar(id, customerID, location) && roomRm.reserveRoom(id, customerID, location) && rF;
     }
 
     /**
