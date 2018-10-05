@@ -30,19 +30,19 @@ public class RMIMiddleware implements IResourceManager{
     /*
         Method for connecting resource managers
     */
-    private static boolean connectRm(IResourceManager rm,String rmName,String server){
+    private static IResourceManager connectRm(String rmName,String server){
         try{
+            System.out.println("Connecting to rm: " + rmName + " On Server: " + server);
             Registry reg = LocateRegistry.getRegistry(server, port);
-            rm = (IResourceManager) reg.lookup(s_rmiPrefix + rmName);
             System.out.println("Middleware connected to " + rmName + " Resource Manager");
-            return true;
+            return (IResourceManager) reg.lookup(s_rmiPrefix + rmName);
         } catch (Exception e) {
             System.out.println("Err: Middleware failed to connect to " + rmName + " Manager");
             System.err.println((char)27 + "[31;1mServer exception: " + (char)27 + "[0mUncaught exception");
             e.printStackTrace();
             System.exit(1);
         }
-        return false;
+        return null;
     }
 	public static void main(String args[])
 	{
@@ -64,7 +64,7 @@ public class RMIMiddleware implements IResourceManager{
                 // Dynamically generate the stub (client proxy)
                 IResourceManager resourceManager = (IResourceManager) UnicastRemoteObject.exportObject(middleware, 0);
 
-                // Bind the remote object's stub in the registry
+                // Bind the remote object"s stub in the registry
                 Registry l_registry;
                 
                 try {
@@ -88,12 +88,10 @@ public class RMIMiddleware implements IResourceManager{
                     }
                 });                                       
                 System.out.println("Middleware server '" + s_rmiPrefix + s_serverName + "'");
-
-                //bind middleware to correct ressource managers
-                connectRm(flightRm,"Flights",flightServer);
-                connectRm(carRm,"Cars",carServer);
-                connectRm(roomRm,"Hotels",hotelServer);
-                connectRm(customerRm,"Customers",customerServer);
+                carRm=connectRm("Cars", carServer);
+                flightRm=connectRm("Flights", flightServer);
+                roomRm=connectRm("Hotels", hotelServer);
+                customerRm=connectRm("Customers", customerServer);
 
             }
             catch (Exception e) {
@@ -107,6 +105,7 @@ public class RMIMiddleware implements IResourceManager{
 
 
     public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException{
+        System.out.println("Add flight");
         return flightRm.addFlight(id, flightNum, flightSeats, flightPrice);
     }
     
@@ -120,6 +119,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean addCars(int id, String location, int numCars, int price) 
 	throws RemoteException{
+        System.out.println("Add Cars");
         return carRm.addCars(id, location, numCars, price);
     } 
    
@@ -133,6 +133,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean addRooms(int id, String location, int numRooms, int price) 
 	throws RemoteException{
+        System.out.println("Add Rooms");
         return roomRm.addRooms(id, location, numRooms, price);
     }
 			    
@@ -143,6 +144,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int newCustomer(int id) 
 	throws RemoteException{
+        System.out.println("New Customer");
         int nid = customerRm.newCustomer(id);
         carRm.newCustomer(id, nid );
         flightRm.newCustomer(id, nid );
@@ -157,6 +159,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean newCustomer(int id, int cid)
         throws RemoteException{
+            System.out.println("New Customer ID");
             return  carRm.newCustomer(id, cid) && 
             flightRm.newCustomer(id, cid) &&
             roomRm.newCustomer(id, cid) &&
@@ -173,6 +176,7 @@ public class RMIMiddleware implements IResourceManager{
      */   
     public boolean deleteFlight(int id, int flightNum) 
 	throws RemoteException{
+        System.out.println("Delete Flight");
         return flightRm.deleteFlight(id, flightNum);
     }
     
@@ -185,6 +189,7 @@ public class RMIMiddleware implements IResourceManager{
      */		    
     public boolean deleteCars(int id, String location) 
 	throws RemoteException{
+        System.out.println("Delete Cars");
         return carRm.deleteCars(id, location);
     }
 
@@ -197,6 +202,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean deleteRooms(int id, String location) 
 	throws RemoteException{
+        System.out.println("Delete Rooms");
         return roomRm.deleteRooms(id, location);
     }
     
@@ -207,6 +213,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean deleteCustomer(int id, int customerID) 
 	throws RemoteException{
+        System.out.println("Delete Customer");
         return  carRm.deleteCustomer(id, customerID) && 
         flightRm.deleteCustomer(id, customerID) && 
         roomRm.deleteCustomer(id, customerID) && 
@@ -220,6 +227,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryFlight(int id, int flightNumber) 
 	throws RemoteException{
+        System.out.println("query Flight");
         return flightRm.queryFlight(id, flightNumber);
     }
 
@@ -230,6 +238,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryCars(int id, String location) 
 	throws RemoteException{
+        System.out.println("query Cars");
         return carRm.queryCars(id,location);
     }
 
@@ -240,6 +249,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryRooms(int id, String location) 
 	throws RemoteException{
+        System.out.println("query Rooms");
         return roomRm.queryRooms(id,location);
     }
 
@@ -250,7 +260,8 @@ public class RMIMiddleware implements IResourceManager{
      */
     public String queryCustomerInfo(int id, int customerID) 
 	throws RemoteException{
-        return customerRm.queryCustomerInfo(id, customerID);
+        System.out.println("Query Customer Info");
+        return "Customer " + customerID + "\n Flights " + flightRm.queryCustomerInfo(id, customerID) + ".\n Rooms " + roomRm.queryCustomerInfo(id, customerID) + ".\n Car " + carRm.queryCustomerInfo(id, customerID);        
     }
     
     /**
@@ -260,6 +271,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryFlightPrice(int id, int flightNumber) 
 	throws RemoteException{
+        System.out.println("Add Flight Price");
         return flightRm.queryFlightPrice(id, flightNumber);
     }
 
@@ -270,7 +282,9 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryCarsPrice(int id, String location) 
 	throws RemoteException{
+        System.out.println("Add Cars Price");
         return carRm.queryCarsPrice(id, location);
+        
     }
 
     /**
@@ -280,6 +294,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public int queryRoomsPrice(int id, String location) 
 	throws RemoteException{
+        System.out.println("Query Rooms Price");
         return roomRm.queryRoomsPrice(id, location);
     }
 
@@ -290,6 +305,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean reserveFlight(int id, int customerID, int flightNumber) 
 	throws RemoteException{
+        System.out.println("Reserve Flight");
         return flightRm.reserveFlight(id, customerID, flightNumber);
     }
 
@@ -300,6 +316,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean reserveCar(int id, int customerID, String location) 
 	throws RemoteException{
+        System.out.println("Reserve Car");
         return carRm.reserveCar(id, customerID, location);
     }
 
@@ -310,6 +327,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean reserveRoom(int id, int customerID, String location) 
 	throws RemoteException{
+        System.out.println("Reserve Room");
         return roomRm.reserveRoom(id, customerID, location);
     }
 
@@ -320,7 +338,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public boolean bundle(int id, int customerID, Vector<String> flightNumbers, String location, boolean car, boolean room)
 	throws RemoteException{
-
+        System.out.println("Bundle");
         boolean rF = true;
 
         for(int i =0; i <flightNumbers.size();i++){
@@ -337,6 +355,7 @@ public class RMIMiddleware implements IResourceManager{
      */
     public String getName()
         throws RemoteException{
+        
             return s_serverName;
         }
 
